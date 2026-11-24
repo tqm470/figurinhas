@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A sticker with a peeled corner and a smiley. 108dp canvas, art within the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- sticker body (top-left rounded square, bottom-right corner cut) -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M38,30 L70,30 Q78,30 78,38 L78,62 L62,78 L38,78 Q30,78 30,70 L30,38 Q30,30 38,30 Z" />
+    <!-- peeled corner -->
+    <path android:fillColor="#FFC8EBD5"
+        android:pathData="M78,62 L66,62 Q62,62 62,66 L62,78 Z" />
+    <!-- eyes -->
+    <path android:fillColor="#FF14833F"
+        android:pathData="M44,46 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+    <path android:fillColor="#FF14833F"
+        android:pathData="M62,46 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+    <!-- smile -->
+    <path android:strokeColor="#FF14833F" android:strokeWidth="4" android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M42,58 Q50,66 58,58" />
+</vector>
