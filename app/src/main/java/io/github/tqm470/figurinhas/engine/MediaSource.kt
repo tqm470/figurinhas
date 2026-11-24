@@ -7,8 +7,6 @@ import android.graphics.ImageDecoder
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
-import com.bumptech.glide.gifdecoder.GifDecoder
-import com.bumptech.glide.gifdecoder.StandardGifDecoder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -83,42 +81,39 @@ class MediaSource private constructor(
     // ---------- GIF ----------
 
     private suspend fun gifFrames(startMs: Long, endMs: Long, stepMs: Double, onProgress: (Float) -> Unit): List<Bitmap> {
-        val decoder = openGif(file)
+        val gif = GifReader(file.readBytes())
+        val job = coroutineContext[kotlinx.coroutines.Job]
+        val canvasBmp = Bitmap.createBitmap(gif.width, gif.height, Bitmap.Config.ARGB_8888)
         val out = ArrayList<Bitmap>()
         var t = 0L
         var sampleIndex = 0
         fun sampleTime(i: Int) = startMs + i * stepMs
         val total = max(1.0, (endMs - startMs) / stepMs)
-        try {
-            for (i in 0 until decoder.frameCount) {
-                coroutineContext.ensureActive()
-                decoder.advance()
-                val delay = fixGifDelay(decoder.getDelay(decoder.currentFrameIndex))
-                val frameEnd = t + delay
-                if (frameEnd > sampleTime(sampleIndex)) {
-                    val raw = decoder.nextFrame ?: break
-                    var shared: Bitmap? = null
-                    while (sampleTime(sampleIndex) < frameEnd && sampleTime(sampleIndex) < endMs) {
-                        if (sampleTime(sampleIndex) >= t) {
-                            val b = shared ?: scaled(raw, Bitmap.Config.ARGB_8888).also { shared = it }
-                            out += b
-                        }
-                        sampleIndex++
-                        onProgress((sampleIndex / total).toFloat().coerceAtMost(1f))
-                    }
+        gif.decode { i, canvas ->
+            if (job?.isActive == false) return@decode false
+            val frameEnd = t + fixGifDelay(gif.frames[i].delayMs)
+            var shared: Bitmap? = null
+            while (sampleTime(sampleIndex) < frameEnd && sampleTime(sampleIndex) < endMs) {
+                if (sampleTime(sampleIndex) >= t) {
+                    val b = shared ?: run {
+                        canvasBmp.setPixels(canvas, 0, gif.width, 0, 0, gif.width, gif.height)
+                        scaled(canvasBmp, Bitmap.Config.ARGB_8888)
+                    }.also { shared = it }
+                    out += b
                 }
-                t = frameEnd
-                if (sampleTime(sampleIndex) >= endMs) break
+                sampleIndex++
+                onProgress((sampleIndex / total).toFloat().coerceAtMost(1f))
             }
-        } finally {
-            decoder.clear()
+            t = frameEnd
+            sampleTime(sampleIndex) < endMs
         }
+        coroutineContext.ensureActive()
         if (out.isEmpty()) {
-            // Window started past the last frame (shouldn't happen), fall back to first frame.
-            val d = openGif(file)
-            d.advance()
-            d.nextFrame?.let { out += scaled(it, Bitmap.Config.ARGB_8888) }
-            d.clear()
+            gif.decode { _, canvas ->
+                canvasBmp.setPixels(canvas, 0, gif.width, 0, 0, gif.width, gif.height)
+                out += scaled(canvasBmp, Bitmap.Config.ARGB_8888)
+                false
+            }
         }
         return out
     }
@@ -213,16 +208,14 @@ class MediaSource private constructor(
 
             when {
                 isGif -> {
-                    val d = openGif(file)
-                    var total = 0L
-                    for (i in 0 until d.frameCount) total += fixGifDelay(d.getDelay(i))
-                    val src = MediaSource(
-                        file, if (d.frameCount > 1) MediaKind.GIF else MediaKind.IMAGE,
-                        total, d.width, d.height,
-                        if (total > 0) d.frameCount * 1000f / total else 10f,
+                    val gif = GifReader(file.readBytes())
+                    if (gif.frames.isEmpty()) error("Can't decode GIF")
+                    val total = gif.frames.sumOf { fixGifDelay(it.delayMs).toLong() }
+                    MediaSource(
+                        file, if (gif.frames.size > 1) MediaKind.GIF else MediaKind.IMAGE,
+                        total, gif.width, gif.height,
+                        if (total > 0) gif.frames.size * 1000f / total else 10f,
                     )
-                    d.clear()
-                    src
                 }
                 isVideo -> {
                     val r = MediaMetadataRetriever()
@@ -262,24 +255,6 @@ class MediaSource private constructor(
         }
 
         /** Browsers treat GIF delays of <= 10ms as 100ms; we do the same. */
-        private fun fixGifDelay(d: Int): Int = if (d <= 10) 100 else d
-
-        private fun openGif(file: File): StandardGifDecoder {
-            val decoder = StandardGifDecoder(SimpleBitmapProvider)
-            decoder.setDefaultBitmapConfig(Bitmap.Config.ARGB_8888)
-            val status = decoder.read(file.readBytes())
-            if (status != GifDecoder.STATUS_OK || decoder.frameCount == 0) error("Can't decode GIF")
-            return decoder
-        }
-    }
-
-    private object SimpleBitmapProvider : GifDecoder.BitmapProvider {
-        override fun obtain(width: Int, height: Int, config: Bitmap.Config): Bitmap =
-            Bitmap.createBitmap(width, height, config)
-        override fun release(bitmap: Bitmap) {}
-        override fun obtainByteArray(size: Int) = ByteArray(size)
-        override fun release(bytes: ByteArray) {}
-        override fun obtainIntArray(size: Int) = IntArray(size)
-        override fun release(array: IntArray) {}
+        internal fun fixGifDelay(d: Int): Int = if (d <= 10) 100 else d
     }
 }

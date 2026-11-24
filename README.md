@@ -34,7 +34,7 @@ git tag v1.0.0 && git push origin v1.0.0
 - WhatsApp reads third-party packs through a `ContentProvider` that follows WhatsApp's official sticker contract (`provider/StickerContentProvider.kt`). The "Add to WhatsApp" button sends the `com.whatsapp.intent.action.ENABLE_STICKER_PACK` intent.
 - Animated WebP is built **without native code**. Android's own encoder compresses each frame (`Bitmap.compress(WEBP_LOSSY)`). `engine/AnimatedWebP.kt` then takes the `VP8`/`ALPH`/`VP8L` chunks out of each frame and wraps them into `ANMF` frames inside a `VP8X` + `ANIM` RIFF container.
 - `engine/StickerMaker.kt` estimates the bytes per frame at each quality level from a few sample frames. It picks the best quality and frame-skip combination, then checks the result with a real encode.
-- GIF decoding uses Glide's tiny standalone `gifdecoder` library. Video frames come from `MediaMetadataRetriever`, read in sequential batches on Android 9 and later.
+- GIFs are decoded by a small built-in decoder (`engine/GifReader.kt`) that handles every disposal method correctly, so transparent GIFs leave no trails. Its output matches Pillow pixel for pixel. Video frames come from `MediaMetadataRetriever`, read in sequential batches on Android 9 and later.
 
 ## Build
 

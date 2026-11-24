@@ -19,6 +19,7 @@ object StickerMaker {
     const val STATIC_LIMIT = 100 * 1024
     const val MAX_DURATION_MS = 10_000
 
+    private const val GOOD_QUALITY = 36
     private val QUALITIES = intArrayOf(85, 75, 65, 55, 45, 36, 28, 20, 13, 8)
 
     class Result(val webp: ByteArray, val firstFrame: Bitmap, val quality: Int, val frameCount: Int, val durationMs: Int)
@@ -67,8 +68,15 @@ object StickerMaker {
         }
 
         // 2) Pick the best (quality, frame skip) pair predicted to fit, then verify with a real encode.
+        // Prefer dropping frames (keeping at least every 3rd frame) over going below a decent quality.
         var step = 1
-        var qi = choose(avgSize, slots.size, step)
+        var qi = -1
+        for (st in 1..3) {
+            if (st > 1 && ceil(slots.size / st.toDouble()) < 2) break
+            val q = choose(avgSize, slots.size, st)
+            if (q >= 0 && QUALITIES[q] >= GOOD_QUALITY) { step = st; qi = q; break }
+            if (qi < 0 && q >= 0) { step = st; qi = q } // remember first fit as a fallback
+        }
         while (qi < 0 && ceil(slots.size / (step + 1.0)) >= 2) {
             step++
             qi = choose(avgSize, slots.size, step)

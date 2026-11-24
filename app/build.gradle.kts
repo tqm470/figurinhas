@@ -30,6 +30,7 @@ android {
         // Authority of the ContentProvider WhatsApp reads sticker packs from.
         val authority = "$applicationId.stickercontentprovider"
         manifestPlaceholders["stickerAuthority"] = authority
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "STICKER_AUTHORITY", "\"$authority\"")
     }
 
@@ -85,9 +86,9 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.5")
 
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
 
-    // Frame-by-frame GIF decoding (tiny, no Glide runtime needed).
-    implementation("com.github.bumptech.glide:gifdecoder:4.16.0")
     // Animated previews of finished stickers (animated WebP).
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.coil-kt:coil-gif:2.7.0")
