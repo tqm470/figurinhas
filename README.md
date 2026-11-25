@@ -21,7 +21,7 @@ It has no ads, no premium tier, no account, and no internet permission.
 
 ## Install
 
-Download `Figurinhas.apk` from the latest [GitHub Release](../../releases) or from the build artifacts of the **Build APK** workflow. Open it on your phone and allow "install unknown apps" when Android asks.
+Download `Figurinhas.apk` from the [Releases page](../../releases). Every push publishes a "Test build" there, and `v*` tags publish proper releases. You can also get it from from the build artifacts of the **Build APK** workflow. Open it on your phone and allow "install unknown apps" when Android asks.
 
 To publish a release, push a tag:
 
